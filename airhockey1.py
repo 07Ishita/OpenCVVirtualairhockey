@@ -8,8 +8,8 @@ WIDTH, HEIGHT = 640, 480  # Screen size
 MALLET_RADIUS = 30        # Radius of mallet
 PUCK_RADIUS = 20          # Radius of puck
 SPEED_LIMIT = 15          # Puck speed limit
-GOAL_SIZE = 120           # Size of the goals
-GAME_DURATION = 200       # GAME TIMING
+GOAL_SIZE = 200          # Size of the goals
+GAME_DURATION = 120     # GAME TIMING
 
 # Colors
 WHITE = (255, 255, 255)
