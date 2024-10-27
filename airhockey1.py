@@ -5,11 +5,11 @@ from datetime import datetime
 
 # Constants
 WIDTH, HEIGHT = 640, 480  # Screen size
-MALLET_RADIUS = 30        # Radius of mallet
-PUCK_RADIUS = 20          # Radius of puck
+MALLET_RADIUS = 16       # Radius of mallet
+PUCK_RADIUS = 8          # Radius of puck
 SPEED_LIMIT = 15          # Puck speed limit
-GOAL_SIZE = 200          # Size of the goals
-GAME_DURATION = 120     # GAME TIMING
+GOAL_SIZE = 200           # Size of the goals
+GAME_DURATION = 120       # GAME TIMING
 
 # Colors
 WHITE = (255, 255, 255)
@@ -25,22 +25,22 @@ mp_drawing = mp.solutions.drawing_utils
 # Physics variables for puck
 puck_pos = np.array([WIDTH // 2, HEIGHT // 2], dtype=np.float32)  # Position of puck
 puck_vel = np.random.uniform(-1, 1, size=2) * SPEED_LIMIT         # Starting velocity
-India_score = 0
-England_score = 0
+Player1_score = 0
+Player2_score = 0
 
 # Function to update puck physics (movement and collision)
 def update_puck():
-    global puck_pos, puck_vel, India_score, England_score
+    global puck_pos, puck_vel, Player1_score, Player2_score
     puck_pos += puck_vel
 
     # Collision with walls (excluding goal areas)
     if puck_pos[1] - PUCK_RADIUS <= 0 or puck_pos[1] + PUCK_RADIUS >= HEIGHT:
         puck_vel[1] *= -1  # Bounce vertically
     if puck_pos[0] - PUCK_RADIUS <= 0 and (HEIGHT // 2 - GOAL_SIZE // 2) <= puck_pos[1] <= (HEIGHT // 2 + GOAL_SIZE // 2):
-        India_score += 1
+        Player1_score += 1
         reset_puck()
     elif puck_pos[0] + PUCK_RADIUS >= WIDTH and (HEIGHT // 2 - GOAL_SIZE // 2) <= puck_pos[1] <= (HEIGHT // 2 + GOAL_SIZE // 2):
-        England_score += 1
+        Player2_score += 1
         reset_puck() 
     elif puck_pos[0] - PUCK_RADIUS <= 0 or puck_pos[0] + PUCK_RADIUS >= WIDTH:
         puck_vel[0] *= -1  # Bounce horizontally    
@@ -88,16 +88,16 @@ def display_start_menu(frame):
     cv2.putText(frame, "Press 'q' to Quit", (WIDTH // 2 - 130, HEIGHT // 2 + 60), cv2.FONT_HERSHEY_SIMPLEX, 1, GREEN, 2)
 
 def display_game_over(frame):
-     global India_score, England_score
+     global Player1_score, England_score
      winner = "It's a Draw!"
-     if India_score > England_score:
-        winner = "India Wins!"
-     elif England_score > India_score:
-        winner = "England Wins!"
+     if Player1_score > Player2_score:
+        winner = "Player1 Wins!"
+     elif Player2_score > Player2_score:
+        winner = "Player2 Wins!"
 
     # Display the game over message and winner
      cv2.putText(frame, "Game Over", (WIDTH // 2 - 100, HEIGHT // 2 - 60), cv2.FONT_HERSHEY_SIMPLEX, 1.5, RED, 3)
-     cv2.putText(frame, f"Final Score: India {India_score} - England {England_score}", (WIDTH // 2 - 200, HEIGHT // 2), cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 2)
+     cv2.putText(frame, f"Final Score: Player1 {Player1_score} - Player2 {Player2_score}", (WIDTH // 2 - 200, HEIGHT // 2), cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 2)
      cv2.putText(frame, winner, (WIDTH // 2 - 100, HEIGHT // 2 + 40), cv2.FONT_HERSHEY_SIMPLEX, 1.2, GREEN, 2)
      cv2.putText(frame, "Press 'r' to Restart", (WIDTH // 2 - 130, HEIGHT // 2 + 80), cv2.FONT_HERSHEY_SIMPLEX,1,GREEN,2)
 # Main loop for the game
@@ -125,7 +125,7 @@ while True:
         if difference >= duration:
             display_game_over(frame)
             if cv2.waitKey(10) & 0xFF == ord('r'):
-                India_score, England_score = 0, 0
+                Player1_score, Player2_score = 0, 0
                 start_time = datetime.now()
             elif cv2.waitKey(10) & 0xFF == ord('q'):
                 break
@@ -142,8 +142,8 @@ while True:
             
             # Display timer and scores
             cv2.putText(frame, f"Time: {duration - difference}", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, RED, 2)
-            cv2.putText(frame, f"India : {India_score}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-            cv2.putText(frame, f"England : {England_score}", (WIDTH - 200, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            cv2.putText(frame, f"Player1 : {Player1_score}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            cv2.putText(frame, f"Player2 : {Player2_score}", (WIDTH - 200, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
 
     # Show the frame
     cv2.imshow("Air Hockey", frame)
