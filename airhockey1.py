@@ -5,11 +5,17 @@ from datetime import datetime
 
 # Constants
 WIDTH, HEIGHT = 640, 480  # Screen size
-MALLET_RADIUS = 16       # Radius of mallet
-PUCK_RADIUS = 8          # Radius of puck
+MALLET_RADIUS = 2       # Radius of mallet
+PUCK_RADIUS = 1          # Radius of puck
 SPEED_LIMIT = 15          # Puck speed limit
 GOAL_SIZE = 200           # Size of the goals
 GAME_DURATION = 120       # GAME TIMING
+
+# Colors for players and mallets
+PLAYER_COLORS = {
+    "Player1": (0, 0, 255),  # Red for Player 1
+    "Player2": (255, 0, 0)    # Blue for Player 2
+}
 
 # Colors
 WHITE = (255, 255, 255)
@@ -36,36 +42,54 @@ def update_puck():
     # Collision with walls (excluding goal areas)
     if puck_pos[1] - PUCK_RADIUS <= 0 or puck_pos[1] + PUCK_RADIUS >= HEIGHT:
         puck_vel[1] *= -1  # Bounce vertically
+    
+    # Check for goal conditions and update scores
     if puck_pos[0] - PUCK_RADIUS <= 0 and (HEIGHT // 2 - GOAL_SIZE // 2) <= puck_pos[1] <= (HEIGHT // 2 + GOAL_SIZE // 2):
-        Player1_score += 1
+        Player2_score += 1  # Increase Player 2's score when puck enters Player 1's goal area
         reset_puck()
     elif puck_pos[0] + PUCK_RADIUS >= WIDTH and (HEIGHT // 2 - GOAL_SIZE // 2) <= puck_pos[1] <= (HEIGHT // 2 + GOAL_SIZE // 2):
-        Player2_score += 1
+        Player1_score += 1  # Increase Player 1's score when puck enters Player 2's goal area
         reset_puck() 
+
+    # Bounce off walls if not in goal areas
     elif puck_pos[0] - PUCK_RADIUS <= 0 or puck_pos[0] + PUCK_RADIUS >= WIDTH:
         puck_vel[0] *= -1  # Bounce horizontally    
 
     # Clamp speed
     speed = np.linalg.norm(puck_vel)
     if speed > SPEED_LIMIT:
-        puck_vel = (puck_vel / speed) * SPEED_LIMIT 
-
+        puck_vel = (puck_vel / speed)*SPEED_LIMIT
 def reset_puck():
     global puck_pos, puck_vel  
     puck_pos = np.array([WIDTH // 2, HEIGHT // 2], dtype=np.float32)  # Position of puck
     puck_vel = np.random.uniform(-1, 1, size=2) * SPEED_LIMIT          # Starting velocity   
 
 # Function to check for collision with the mallet
+
 def check_collision(mallet_positions):
     global puck_pos, puck_vel
     for mallet_pos in mallet_positions:
         dist = np.linalg.norm(puck_pos - mallet_pos)
+        
         if dist <= MALLET_RADIUS + PUCK_RADIUS:
-            direction = (puck_pos - mallet_pos) / dist
-            puck_vel = direction * SPEED_LIMIT  # Reflect puck with new velocity
+            # Calculate the normal vector from mallet to puck
+            normal = (puck_pos - mallet_pos) / dist
+            
+            # Move the puck out of the mallet's surface
+            overlap = MALLET_RADIUS + PUCK_RADIUS - dist
+            puck_pos += normal * overlap
+            
+            # Reflect puck velocity based on the normal
+            puck_vel = puck_vel - 2 * np.dot(puck_vel, normal) * normal
+            
+            # Clamp the puck's speed
+            speed = np.linalg.norm(puck_vel)
+            if speed > SPEED_LIMIT:
+                puck_vel = (puck_vel / speed) * SPEED_LIMIT
+
 
 # Function to control mallet with hands
-def control_mallet_with_hands(frame):
+def control_mallet_with_hands(frame,player_index):
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     results = hands.process(rgb_frame)
     mallet_positions = []  # To store positions of both hands
@@ -78,6 +102,9 @@ def control_mallet_with_hands(frame):
             mallet_y = int(index_finger_tip.y * frame.shape[0])
             mallet_pos = np.array([mallet_x, mallet_y])
             mallet_positions.append(mallet_pos)
+            if player_index == 0:
+                 color = PLAYER_COLORS["Player1"]
+            else: PLAYER_COLORS["Player2"]
             cv2.circle(frame, (mallet_x, mallet_y), MALLET_RADIUS, RED, 60)
     
     return mallet_positions, frame
@@ -88,7 +115,7 @@ def display_start_menu(frame):
     cv2.putText(frame, "Press 'q' to Quit", (WIDTH // 2 - 130, HEIGHT // 2 + 60), cv2.FONT_HERSHEY_SIMPLEX, 1, GREEN, 2)
 
 def display_game_over(frame):
-     global Player1_score, England_score
+     global Player1_score, Player2_score
      winner = "It's a Draw!"
      if Player1_score > Player2_score:
         winner = "Player1 Wins!"
@@ -97,9 +124,14 @@ def display_game_over(frame):
 
     # Display the game over message and winner
      cv2.putText(frame, "Game Over", (WIDTH // 2 - 100, HEIGHT // 2 - 60), cv2.FONT_HERSHEY_SIMPLEX, 1.5, RED, 3)
-     cv2.putText(frame, f"Final Score: Player1 {Player1_score} - Player2 {Player2_score}", (WIDTH // 2 - 200, HEIGHT // 2), cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 2)
+     cv2.putText(frame, f" Player1: {Player1_score} - Player2: {Player2_score}", (WIDTH // 2 - 200, HEIGHT // 2), cv2.FONT_HERSHEY_SIMPLEX, 1, WHITE, 2)
      cv2.putText(frame, winner, (WIDTH // 2 - 100, HEIGHT // 2 + 40), cv2.FONT_HERSHEY_SIMPLEX, 1.2, GREEN, 2)
      cv2.putText(frame, "Press 'r' to Restart", (WIDTH // 2 - 130, HEIGHT // 2 + 80), cv2.FONT_HERSHEY_SIMPLEX,1,GREEN,2)
+
+     # Create the game window in fullscreen mode
+cv2.namedWindow("Air Hockey", cv2.WINDOW_NORMAL)
+cv2.setWindowProperty("Air Hockey", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
 # Main loop for the game
 duration = 120
 cap = cv2.VideoCapture(0 + cv2.CAP_DSHOW)
@@ -130,20 +162,20 @@ while True:
             elif cv2.waitKey(10) & 0xFF == ord('q'):
                 break
         else:
-            mallet_pos, frame = control_mallet_with_hands(frame)
+            mallet_pos, frame = control_mallet_with_hands(frame,player_index=0)
             update_puck()
             if mallet_pos is not None:
                 check_collision(mallet_pos)
 
             # Draw puck and goals
-            cv2.circle(frame, tuple(puck_pos.astype(int)), PUCK_RADIUS, BLUE, 40)
+            cv2.circle(frame, tuple(puck_pos.astype(int)), PUCK_RADIUS,GREEN, 40)
             cv2.rectangle(frame, (0, (HEIGHT // 2) - (GOAL_SIZE // 2)), (10, (HEIGHT // 2) + (GOAL_SIZE // 2)), WHITE, 20)
             cv2.rectangle(frame, (WIDTH - 10, (HEIGHT // 2) - (GOAL_SIZE // 2)), (WIDTH, (HEIGHT // 2) + (GOAL_SIZE // 2)), WHITE, 20)
             
             # Display timer and scores
             cv2.putText(frame, f"Time: {duration - difference}", (100, 100), cv2.FONT_HERSHEY_SIMPLEX, 1, RED, 2)
-            cv2.putText(frame, f"Player1 : {Player1_score}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-            cv2.putText(frame, f"Player2 : {Player2_score}", (WIDTH - 200, 50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+            cv2.putText(frame, f"Player1 : {Player1_score}", (50, 50), cv2.FONT_HERSHEY_SIMPLEX, 1,PLAYER_COLORS["Player1"], 2)
+            cv2.putText(frame, f"Player2 : {Player2_score}", (WIDTH - 200, 50), cv2.FONT_HERSHEY_SIMPLEX, 1,PLAYER_COLORS["Player2"], 2)
 
     # Show the frame
     cv2.imshow("Air Hockey", frame)
